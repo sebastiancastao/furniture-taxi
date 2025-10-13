@@ -15,8 +15,30 @@ A modern, single-page Next.js application for collecting moving requests.
   - Checks `discount` table for matching code
   - Falls back to `referral` table if not found in discount
   - Auto-fills Name, Email, and Phone fields when code is found
+- **Email Notifications via Resend**:
+  - Sends confirmation email to customer with $50 discount badge (if applicable)
+  - Sends notification email to admin with all booking details
+  - Beautiful HTML email templates
 
 ## Getting Started
+
+### Environment Variables
+
+Create a `.env.local` file in the root directory with:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+RESEND_API_KEY=your_resend_api_key
+```
+
+**To get your Resend API Key:**
+1. Sign up at [resend.com](https://resend.com)
+2. Go to API Keys section
+3. Create a new API key
+4. Add it to `.env.local`
+
+### Installation
 
 First, install the dependencies:
 

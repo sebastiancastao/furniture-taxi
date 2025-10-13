@@ -20,6 +20,7 @@ export default function Home() {
   const [submitMessage, setSubmitMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hasDiscount, setHasDiscount] = useState(false)
 
   useEffect(() => {
     const code = searchParams.get('code')
@@ -49,7 +50,8 @@ export default function Home() {
           email: discountData.email || '',
           phone: discountData.phone || '',
         }))
-        setSubmitMessage(`Discount code applied successfully: ${code}`)
+        setHasDiscount(true)
+        setSubmitMessage(`Discount code applied successfully: ${code} - $50 OFF`)
         setIsLoading(false)
         return
       }
@@ -69,7 +71,8 @@ export default function Home() {
           email: referralData.email || '',
           phone: referralData.phone || '',
         }))
-        setSubmitMessage(`Referral code applied successfully: ${code}`)
+        setHasDiscount(true)
+        setSubmitMessage(`Referral code applied successfully: ${code} - $50 OFF`)
         setIsLoading(false)
         return
       }
@@ -100,26 +103,48 @@ export default function Home() {
     setSubmitMessage('')
     setError('')
 
-    // Simulate form submission
-    setTimeout(() => {
-      console.log('Form submitted:', formData)
-      setSubmitMessage('Thank you! Your moving request has been submitted successfully.')
+    try {
+      // Send email via API
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          hasDiscount,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('Form submitted successfully:', formData)
+        setSubmitMessage('Thank you! Your moving request has been submitted successfully. Check your email for confirmation.')
+        
+        // Reset form after successful submission
+        setTimeout(() => {
+          setFormData({
+            name: '',
+            email: '',
+            phone: '',
+            fromZip: '',
+            toZip: '',
+            moveDate: '',
+            moveSize: '',
+          })
+          setHasDiscount(false)
+          setSubmitMessage('')
+        }, 5000)
+      } else {
+        setError('Failed to submit your request. Please try again.')
+      }
+    } catch (err) {
+      console.error('Error submitting form:', err)
+      setError('An error occurred while submitting your request. Please try again.')
+    } finally {
       setIsSubmitting(false)
-      
-      // Reset form after successful submission
-      setTimeout(() => {
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          fromZip: '',
-          toZip: '',
-          moveDate: '',
-          moveSize: '',
-        })
-        setSubmitMessage('')
-      }, 3000)
-    }, 1000)
+    }
   }
 
   return (
