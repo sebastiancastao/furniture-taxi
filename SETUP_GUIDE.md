@@ -131,6 +131,26 @@ The emails use beautiful HTML templates with:
 - Verify Resend account is active
 - Check Resend dashboard for delivery logs
 
+## Environment Variables Setup
+
+To send emails via Resend, you must add your API credentials as environment variables. Follow these steps:
+
+1. In the root of your project, create a file named `.env.local` if it does not already exist.
+
+2. Add the following lines to `.env.local` (replace these values with your actual keys if different):
+
+```
+RESEND_API_KEY=b820d9d6ddda49b3b682219983054087
+RESEND_CLIENT_ID=4434d301-bc23-4492-9fd7-60b5b9fa9ad8
+```
+
+- `RESEND_API_KEY` is required for your backend (API route) to send mail via Resend.
+- The client ID (`RESEND_CLIENT_ID`) can be referenced in the Frontend if you need to, or for dashboard/API purposes.
+
+**Note:** Never commit `.env.local` to source control. It is already ignored by default by Next.js templates. If not, add `.env.local` to your `.gitignore` file.
+
+---
+
 
 
 
