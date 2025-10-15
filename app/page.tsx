@@ -129,19 +129,20 @@ export default function Home() {
     const allFieldsFilled = Object.values(snapshot).every(v => !!v);
     const filledSessionKey = `allfilled-${code}`;
     if (allFieldsFilled && !sessionStorage.getItem(filledSessionKey)) {
-      supabase.from('code_all_fields_filled').insert([
-        {
-          code,
-          filled_at: new Date().toISOString(),
-          field_snapshot: JSON.stringify(snapshot)
+      (async () => {
+        try {
+          await supabase.from('code_all_fields_filled').insert([
+            {
+              code,
+              filled_at: new Date().toISOString(),
+              field_snapshot: JSON.stringify(snapshot)
+            }
+          ]);
+          sessionStorage.setItem(filledSessionKey, '1');
+        } catch (e) {
+          console.error('Failed to log all-filled event:', e);
         }
-      ])
-      .then(() => {
-        sessionStorage.setItem(filledSessionKey, '1');
-      })
-      .catch((e) => {
-        console.error('Failed to log all-filled event:', e);
-      });
+      })();
     }
   }
 
