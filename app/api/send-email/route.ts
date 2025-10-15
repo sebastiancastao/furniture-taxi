@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     // Send email to admin/business
     const adminEmail = await resend.emails.send({
-      from: 'Furniture Taxi <onboarding@resend.dev>', // Change this to your verified domain
+      from: 'delivered@resend.dev', // Change this to your verified domain
       to: ['sebastiancastao379@gmail.com'], // Changed to specified admin email
       subject: `New Moving Request from ${name}`,
       html: adminEmailHtml,
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email to customer
     const customerEmail = await resend.emails.send({
-      from: 'Furniture Taxi <onboarding@resend.dev>', // Change this to your verified domain
+      from: 'delivered@resend.dev', // Change this to your verified domain
       to: [email],
       subject: 'Your Moving Request Confirmation - Furniture Taxi',
       html: customerEmailHtml,
@@ -237,8 +237,17 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error sending email:', error)
+    // Safely stringify error for the API response
+    let errMsg = 'Failed to send email';
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+      errMsg = error.message;
+    } else if (typeof error === 'string') {
+      errMsg = error;
+    } else {
+      try { errMsg = JSON.stringify(error); } catch { /* ignore */ }
+    }
     return NextResponse.json(
-      { success: false, error: 'Failed to send email' },
+      { success: false, error: errMsg },
       { status: 500 }
     )
   }

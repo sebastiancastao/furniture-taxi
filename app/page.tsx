@@ -4,6 +4,9 @@ import { useState, FormEvent, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+const GOLD = '#F5B700'
+const CREAM = '#FAF7EF'
+
 export default function Home() {
   const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
@@ -25,18 +28,16 @@ export default function Home() {
 
   useEffect(() => {
     const code = searchParams.get('code')
-    
-    if (code) {
-      fetchDataFromSupabase(code)
-    }
+    if (code) fetchDataFromSupabase(code)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   const fetchDataFromSupabase = async (code: string) => {
     setIsLoading(true)
     setError('')
-    
+
     try {
-      // First, try to find the code in the 'discount' table
+      // Try 'discount'
       const { data: discountData, error: discountError } = await supabase
         .from('discount')
         .select('*')
@@ -44,7 +45,6 @@ export default function Home() {
         .single()
 
       if (!discountError && discountData) {
-        // Found in discount table - populate form
         setFormData(prev => ({
           ...prev,
           name: discountData.name || '',
@@ -52,12 +52,12 @@ export default function Home() {
           phone: discountData.phone || '',
         }))
         setHasDiscount(true)
-        setSubmitMessage(`Discount code applied successfully: ${code} - $50 OFF`)
+        setSubmitMessage(`$50 discount applied with link: ${code}`)
         setIsLoading(false)
         return
       }
 
-      // If not found in discount, try the 'referral' table
+      // Try 'referral'
       const { data: referralData, error: referralError } = await supabase
         .from('referral')
         .select('*')
@@ -65,7 +65,6 @@ export default function Home() {
         .single()
 
       if (!referralError && referralData) {
-        // Found in referral table - populate form
         setFormData(prev => ({
           ...prev,
           name: referralData.name || '',
@@ -73,18 +72,15 @@ export default function Home() {
           phone: referralData.phone || '',
         }))
         setHasDiscount(true)
-        setSubmitMessage(`Referral code applied successfully: ${code} - $50 OFF`)
+        setSubmitMessage(`Referral link applied: ${code} — $50 OFF`)
         setIsLoading(false)
         return
       }
 
-      // Code not found in either table
-      console.error('Code not found in discount or referral tables')
-      setError(`Code not found or invalid: ${code}`)
-      
+      setError(`Link not valid: ${code}`)
     } catch (err) {
       console.error('Error fetching data:', err)
-      setError('An error occurred while fetching data')
+      setError('Something went wrong while validating your link.')
     } finally {
       setIsLoading(false)
     }
@@ -92,10 +88,7 @@ export default function Home() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -105,225 +98,406 @@ export default function Home() {
     setError('')
 
     try {
-      // Send email via API
       const response = await fetch('/api/send-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          hasDiscount,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, hasDiscount }),
       })
-
       const result = await response.json()
-
       if (result.success) {
         setIsSuccess(true)
-        setSubmitMessage('Thank you! Your moving request has been submitted successfully. Check your email for confirmation.')
-        // No need to reset the form after delay, form will be hidden
+        setSubmitMessage('Thanks! Your moving request is in. Check your email for confirmation.')
       } else {
-        setError('Failed to submit your request. Please try again.')
+        setError('We could not submit your request. Please try again.')
       }
-    } catch (err) {
-      setError('An error occurred while submitting your request. Please try again.')
+    } catch {
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <main
+      className="min-h-screen py-10 px-4 sm:px-6 lg:px-8"
+      style={{ background: CREAM }}
+    >
       {isSuccess ? (
-        <div className="max-w-xl mx-auto bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
-          <svg className="w-16 h-16 text-emerald-500 mb-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          <h2 className="text-2xl mb-4 font-bold">Your request was sent!</h2>
-          <p className="text-gray-700 text-center mb-4">Thank you. Your moving request has been submitted successfully. We will contact you soon. Please check your email for confirmation.</p>
-          <a href="/" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded">Go back to Home</a>
+        <div
+          className="max-w-xl mx-auto rounded-2xl p-10 text-center shadow-2xl"
+          style={{
+            background: 'rgba(255,255,255,0.75)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(0,0,0,0.06)',
+          }}
+        >
+          <svg className="w-16 h-16 mx-auto mb-6 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <h2 className="text-2xl font-bold text-neutral-900 mb-3">Your request was sent!</h2>
+          <p className="text-neutral-700 mb-6">
+            Thank you for choosing <strong>The Furniture Taxi</strong>. We’ll contact you soon. Please check your email for confirmation.
+          </p>
+          <a
+            href="/"
+            className="inline-block rounded-full px-6 py-2 font-semibold text-neutral-900"
+            style={{
+              background: `linear-gradient(135deg, ${GOLD}, #FFD860)`,
+              boxShadow: '0 8px 24px rgba(245,183,0,0.35)',
+            }}
+          >
+            Go back home
+          </a>
         </div>
       ) : (
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Furniture Taxi
+          {/* Light Liquid-Glass Card */}
+          <div
+            className="rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(17,17,17,0.18)]"
+            style={{
+              background: 'rgba(255,255,255,0.65)',
+              backdropFilter: 'blur(18px)',
+              border: '1px solid rgba(234,219,162,0.35)', // soft gold outline
+            }}
+          >
+            {/* Top black & gold stripes */}
+            <div
+              style={{
+                height: 10,
+                background:
+                  'repeating-linear-gradient(90deg,#111111 0,#111111 20px,' + GOLD + ' 20px,' + GOLD + ' 40px)',
+              }}
+            />
+
+            {/* Header */}
+            <div className="px-6 sm:px-10 pt-10 text-center">
+              <h1
+                className="mb-1"
+                style={{
+                  fontFamily: 'Poppins, Helvetica, Arial, sans-serif',
+                  fontWeight: 800,
+                  fontSize: '26px',
+                  lineHeight: '34px',
+                  textTransform: 'uppercase',
+                  color: '#111111',
+                  letterSpacing: '0.4px',
+                }}
+              >
+                The Furniture Taxi
               </h1>
-              <p className="text-lg text-gray-600">
-                Request Your Move - Fill out the form below
+              <p
+                className="mb-8"
+                style={{
+                  fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                  color: '#374151',
+                  fontSize: 15,
+                  lineHeight: '24px',
+                }}
+              >
+                Request your move — quick, easy, concierge-level service.
               </p>
             </div>
 
-            {/* Loading State */}
-            {isLoading && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-center">Loading data...</p>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-center">{error}</p>
-              </div>
-            )}
-
-            {/* Success Message */}
-            {submitMessage && !error && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800 text-center font-medium">{submitMessage}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name Field */}
-              <div>
-                <label htmlFor="name" className="form-label required">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="First"
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              {/* Email Field */}
-              <div>
-                <label htmlFor="email" className="form-label required">
-                  E-mail
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="your.email@example.com"
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              {/* Phone Field */}
-              <div>
-                <label htmlFor="phone" className="form-label required">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="(555) 123-4567"
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              {/* Moving From Zip Code */}
-              <div>
-                <label htmlFor="fromZip" className="form-label required">
-                  Moving From Zip Code
-                </label>
-                <input
-                  type="text"
-                  id="fromZip"
-                  name="fromZip"
-                  value={formData.fromZip}
-                  onChange={handleInputChange}
-                  placeholder="12345"
-                  pattern="[0-9]{5}"
-                  maxLength={5}
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              {/* Moving To Zip Code */}
-              <div>
-                <label htmlFor="toZip" className="form-label required">
-                  Moving To Zip Code
-                </label>
-                <input
-                  type="text"
-                  id="toZip"
-                  name="toZip"
-                  value={formData.toZip}
-                  onChange={handleInputChange}
-                  placeholder="67890"
-                  pattern="[0-9]{5}"
-                  maxLength={5}
-                  required
-                  className="form-input"
-                />
-              </div>
-
-              {/* Move Date */}
-              <div>
-                <label htmlFor="moveDate" className="form-label required">
-                  Move Date
-                </label>
-                <input
-                  type="date"
-                  id="moveDate"
-                  name="moveDate"
-                  value={formData.moveDate}
-                  onChange={handleInputChange}
-                  required
-                  className="form-input"
-                />
-                <p className="text-xs text-gray-500 mt-1">Select date MM/DD/YYYY</p>
-              </div>
-
-              {/* Move Size */}
-              <div>
-                <label htmlFor="moveSize" className="form-label required">
-                  Move Size
-                </label>
-                <select
-                  id="moveSize"
-                  name="moveSize"
-                  value={formData.moveSize}
-                  onChange={handleInputChange}
-                  required
-                  className="form-input"
+            {/* Notices */}
+            <div className="px-6 sm:px-10">
+              {isLoading && (
+                <div
+                  className="mb-6 rounded-lg px-4 py-3 text-center"
+                  style={{
+                    background: 'rgba(59,130,246,0.10)',
+                    border: '1px solid rgba(59,130,246,0.35)',
+                    color: '#1D4ED8',
+                  }}
                 >
-                  <option value="">Select move size</option>
-                  <option value="studio">Studio</option>
-                  <option value="1-bedroom">1 Bedroom</option>
-                  <option value="2-bedroom">2 Bedroom</option>
-                  <option value="3-bedroom">3 Bedroom</option>
-                  <option value="4-bedroom">4+ Bedroom</option>
-                  <option value="office">Office</option>
-                  <option value="storage">Storage Unit</option>
-                </select>
-              </div>
+                  Validating your link…
+                </div>
+              )}
 
-              {/* Submit Button */}
-              <div className="pt-4">
+              {error && (
+                <div
+                  className="mb-6 rounded-lg px-4 py-3 text-center"
+                  style={{
+                    background: 'rgba(239,68,68,0.08)',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    color: '#B91C1C',
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+
+              {submitMessage && !error && (
+                <div
+                  className="mb-6 rounded-lg px-4 py-3 text-center"
+                  style={{
+                    background: 'rgba(16,185,129,0.10)',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    color: '#047857',
+                  }}
+                >
+                  {submitMessage}
+                </div>
+              )}
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="px-6 sm:px-10 pb-10 space-y-5">
+              <FormField
+                label="Name"
+                name="name"
+                type="text"
+                placeholder="First"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                theme="light"
+              />
+              <FormField
+                label="E-mail"
+                name="email"
+                type="email"
+                placeholder="your.email@example.com"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                theme="light"
+              />
+              <FormField
+                label="Phone"
+                name="phone"
+                type="tel"
+                placeholder="(555) 123-4567"
+                value={formData.phone}
+                onChange={handleInputChange}
+                required
+                theme="light"
+              />
+              <FormField
+                label="Moving From Zip Code"
+                name="fromZip"
+                type="text"
+                placeholder="12345"
+                value={formData.fromZip}
+                onChange={handleInputChange}
+                required
+                pattern="[0-9]{5}"
+                maxLength={5}
+                theme="light"
+              />
+              <FormField
+                label="Moving To Zip Code"
+                name="toZip"
+                type="text"
+                placeholder="67890"
+                value={formData.toZip}
+                onChange={handleInputChange}
+                required
+                pattern="[0-9]{5}"
+                maxLength={5}
+                theme="light"
+              />
+              <FormField
+                label="Move Date"
+                name="moveDate"
+                type="date"
+                value={formData.moveDate}
+                onChange={handleInputChange}
+                required
+                helper="Select date MM/DD/YYYY"
+                theme="light"
+              />
+
+              {/* NORMAL-LOOKING SELECT with consistent fonts */}
+              <SelectField
+                label="Move Size"
+                name="moveSize"
+                value={formData.moveSize}
+                onChange={handleInputChange}
+                required
+                options={[
+                  { value: '', label: 'Select move size' },
+                  { value: 'studio', label: 'Studio' },
+                  { value: '1-bedroom', label: '1 Bedroom' },
+                  { value: '2-bedroom', label: '2 Bedroom' },
+                  { value: '3-bedroom', label: '3 Bedroom' },
+                  { value: '4-bedroom', label: '4+ Bedroom' },
+                  { value: 'office', label: 'Office' },
+                  { value: 'storage', label: 'Storage Unit' },
+                ]}
+              />
+
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="w-full rounded-full font-semibold py-4 transition-all disabled:cursor-not-allowed"
+                  style={{
+                    background: isSubmitting
+                      ? 'linear-gradient(135deg,#9CA3AF,#D1D5DB)'
+                      : `linear-gradient(135deg, ${GOLD}, #FFD860)`,
+                    color: '#111111',
+                    boxShadow: '0 10px 28px rgba(245,183,0,0.30)',
+                  }}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Moving Request'}
+                  {isSubmitting ? 'Submitting…' : 'Submit Moving Request'}
                 </button>
               </div>
             </form>
+
+            {/* Bottom stripes */}
+            <div
+              style={{
+                height: 10,
+                background:
+                  'repeating-linear-gradient(90deg,#111111 0,#111111 20px,' + GOLD + ' 20px,' + GOLD + ' 40px)',
+              }}
+            />
           </div>
 
-          <footer className="mt-8 text-center text-gray-600 text-sm">
-            <p>© 2025 Furniture Taxi. All rights reserved.</p>
+          <footer className="text-center text-sm mt-6" style={{ color: 'rgba(0,0,0,0.55)' }}>
+            © 2025 The Furniture Taxi. All rights reserved.
           </footer>
         </div>
       )}
     </main>
+  )
+}
+
+/** ---------- UI Subcomponents (light glass inputs) ---------- */
+
+type FieldProps = {
+  label: string
+  name: string
+  type?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder?: string
+  required?: boolean
+  pattern?: string
+  maxLength?: number
+  helper?: string
+  theme?: 'light' | 'dark'
+}
+
+function FormField({
+  label,
+  name,
+  type = 'text',
+  value,
+  onChange,
+  placeholder,
+  required,
+  pattern,
+  maxLength,
+  helper,
+  theme = 'light',
+}: FieldProps) {
+  const isLight = theme === 'light'
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block mb-1 text-xs tracking-wide"
+        style={{
+          color: '#111111',
+          fontFamily: 'Poppins, Helvetica, Arial, sans-serif',
+          letterSpacing: '0.2px',
+        }}
+      >
+        {label}{required ? ' *' : ''}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        pattern={pattern}
+        maxLength={maxLength}
+        className="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition"
+        style={{
+          background: isLight ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.06)',
+          color: isLight ? '#111111' : 'rgba(255,255,255,0.95)',
+          border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+          boxShadow: isLight ? 'inset 0 1px 0 rgba(255,255,255,0.6)' : 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.border = `1px solid ${GOLD}`
+          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(245,183,0,0.18)'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.border = isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)'
+          e.currentTarget.style.boxShadow = isLight
+            ? 'inset 0 1px 0 rgba(255,255,255,0.6)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.05)'
+        }}
+      />
+      {helper && <p className="text-[11px] mt-1" style={{ color: '#6B7280', fontFamily: 'Inter, Helvetica, Arial, sans-serif' }}>{helper}</p>}
+    </div>
+  )
+}
+
+type SelectProps = {
+  label: string
+  name: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  required?: boolean
+  options: { value: string; label: string }[]
+}
+
+/** NORMAL select (native look) + consistent fonts for options */
+function SelectField({ label, name, value, onChange, required, options }: SelectProps) {
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block mb-1 text-xs tracking-wide"
+        style={{
+          color: '#111111',
+          fontFamily: 'Poppins, Helvetica, Arial, sans-serif',
+          letterSpacing: '0.2px',
+        }}
+      >
+        {label}{required ? ' *' : ''}
+      </label>
+      <select
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition"
+        style={{
+          background: 'rgba(255,255,255,0.85)',
+          color: '#111111',
+          border: '1px solid rgba(0,0,0,0.08)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+          fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.border = `1px solid ${GOLD}`
+          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(245,183,0,0.18)'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.border = '1px solid rgba(0,0,0,0.08)'
+          e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.6)'
+        }}
+      >
+        {options.map(o => (
+          <option
+            key={o.value}
+            value={o.value}
+            className="text-neutral-900"
+            style={{ fontFamily: 'Inter, Helvetica, Arial, sans-serif' }}
+          >
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }
