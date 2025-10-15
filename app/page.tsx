@@ -51,6 +51,17 @@ export default function Home() {
           email: discountData.email || '',
           phone: discountData.phone || '',
         }))
+        // Log code open only once per session
+        if (!sessionStorage.getItem(`code-opened-${code}`)) {
+          try {
+            await supabase.from('code_opens').insert([
+              { code, opened_at: new Date().toISOString() }
+            ])
+            sessionStorage.setItem(`code-opened-${code}`, '1')
+          } catch (e) {
+            console.error('Failed to log code open:', e)
+          }
+        }
         setHasDiscount(true)
         setSubmitMessage(`$50 discount applied with link: ${code}`)
         setIsLoading(false)
@@ -71,6 +82,17 @@ export default function Home() {
           email: referralData.email || '',
           phone: referralData.phone || '',
         }))
+        // Log code open only once per session
+        if (!sessionStorage.getItem(`code-opened-${code}`)) {
+          try {
+            await supabase.from('code_opens').insert([
+              { code, opened_at: new Date().toISOString() }
+            ])
+            sessionStorage.setItem(`code-opened-${code}`, '1')
+          } catch (e) {
+            console.error('Failed to log code open:', e)
+          }
+        }
         setHasDiscount(true)
         setSubmitMessage(`Referral link applied: ${code} — $50 OFF`)
         setIsLoading(false)
@@ -87,8 +109,40 @@ export default function Home() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    const code = searchParams.get('code') || '';
+
+    // Compose a snapshot with the new value applied
+    const snapshot = {
+      name: formData.name || (name === 'name' ? value : ''),
+      email: formData.email || (name === 'email' ? value : ''),
+      phone: formData.phone || (name === 'phone' ? value : ''),
+      fromZip: formData.fromZip || (name === 'fromZip' ? value : ''),
+      toZip: formData.toZip || (name === 'toZip' ? value : ''),
+      moveDate: formData.moveDate || (name === 'moveDate' ? value : ''),
+      moveSize: formData.moveSize || (name === 'moveSize' ? value : ''),
+    };
+
+    // Check if all are filled (not blank/empty)
+    const allFieldsFilled = Object.values(snapshot).every(v => !!v);
+    const filledSessionKey = `allfilled-${code}`;
+    if (allFieldsFilled && !sessionStorage.getItem(filledSessionKey)) {
+      supabase.from('code_all_fields_filled').insert([
+        {
+          code,
+          filled_at: new Date().toISOString(),
+          field_snapshot: JSON.stringify(snapshot)
+        }
+      ])
+      .then(() => {
+        sessionStorage.setItem(filledSessionKey, '1');
+      })
+      .catch((e) => {
+        console.error('Failed to log all-filled event:', e);
+      });
+    }
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
