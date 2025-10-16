@@ -161,7 +161,29 @@ export default function Home() {
       const result = await response.json()
       if (result.success) {
         setIsSuccess(true)
-        setSubmitMessage('Thanks! Your moving request is in. Check your email for confirmation.')
+        setSubmitMessage('Thanks! Your moving request is in. Check your email for confirmation.');
+        // Log successful form submission to Supabase
+        (async () => {
+          try {
+            await supabase.from('form_submissions').insert([
+              {
+                code: searchParams.get('code') || '',
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                from_zip: formData.fromZip,
+                to_zip: formData.toZip,
+                move_date: formData.moveDate,
+                move_size: formData.moveSize,
+                has_discount: hasDiscount,
+                submitted_at: new Date().toISOString(),
+                submission_snapshot: JSON.stringify(formData)
+              }
+            ]);
+          } catch (e) {
+            console.error('Failed to log form submission:', e);
+          }
+        })();
       } else {
         setError('We could not submit your request. Please try again.')
       }
