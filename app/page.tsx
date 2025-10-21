@@ -25,12 +25,105 @@ export default function Home() {
   const [error, setError] = useState('')
   const [hasDiscount, setHasDiscount] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [quote, setQuote] = useState<any>(null)
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false)
+  const [useNewQuoteMethod, setUseNewQuoteMethod] = useState(false) // Toggle for new vs old method - default to Simple Quote
 
   useEffect(() => {
     const code = searchParams.get('code')
     if (code) fetchDataFromSupabase(code)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  // Listen for postMessage events from Chalk Leads widget
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Verify the message is from the Chalk Leads widget
+      if (event.origin !== 'https://chalk-leads-app-production.up.railway.app') {
+        return
+      }
+
+      // Check if this is a lead submission event
+      if (event.data?.type === 'lead_submitted' || event.data?.event === 'form_completed') {
+        console.log('Chalk Leads form completed:', event.data)
+
+        try {
+          // Send the lead data to our webhook
+          const response = await fetch('/api/chalk-webhook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event.data),
+          })
+
+          const result = await response.json()
+
+          if (result.success) {
+            setIsSuccess(true)
+            setSubmitMessage('Your quote has been sent! Check your email for details.')
+          } else {
+            console.error('Failed to send quote email:', result.error)
+          }
+        } catch (error) {
+          console.error('Error processing widget submission:', error)
+        }
+      }
+    }
+
+    // Add event listener
+    window.addEventListener('message', handleMessage)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Fetch quote when relevant fields change (only if new method is enabled)
+  useEffect(() => {
+    const { fromZip, toZip, moveDate, moveSize } = formData
+
+    // Only fetch if new method is enabled and all required fields are filled
+    if (useNewQuoteMethod && fromZip && toZip && moveDate && moveSize) {
+      const timeoutId = setTimeout(() => {
+        fetchQuote()
+      }, 500) // Debounce by 500ms
+
+      return () => clearTimeout(timeoutId)
+    } else {
+      setQuote(null) // Clear quote if fields are incomplete or old method is selected
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.fromZip, formData.toZip, formData.moveDate, formData.moveSize, useNewQuoteMethod])
+
+  const fetchQuote = async () => {
+    setIsLoadingQuote(true)
+
+    try {
+      const response = await fetch('/api/get-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moveSize: formData.moveSize,
+          fromZip: formData.fromZip,
+          toZip: formData.toZip,
+          moveDate: formData.moveDate,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.quote) {
+        setQuote(result.quote)
+      } else {
+        console.error('Failed to fetch quote:', result.error)
+      }
+    } catch (err) {
+      console.error('Error fetching quote:', err)
+    } finally {
+      setIsLoadingQuote(false)
+    }
+  }
 
   const fetchDataFromSupabase = async (code: string) => {
     setIsLoading(true)
@@ -177,7 +270,16 @@ export default function Home() {
                 move_size: formData.moveSize,
                 has_discount: hasDiscount,
                 submitted_at: new Date().toISOString(),
-                submission_snapshot: JSON.stringify(formData)
+                submission_snapshot: JSON.stringify({
+                  ...formData,
+                  quote: quote ? {
+                    total: quote.total,
+                    subtotal: quote.subtotal,
+                    tax: quote.tax,
+                    basePrice: quote.basePrice,
+                    estimatedHours: quote.estimatedHours,
+                  } : null,
+                })
               }
             ]);
           } catch (e) {
@@ -263,7 +365,7 @@ export default function Home() {
                 The Furniture Taxi
               </h1>
               <p
-                className="mb-8"
+                className="mb-6"
                 style={{
                   fontFamily: 'Inter, Helvetica, Arial, sans-serif',
                   color: '#374151',
@@ -273,52 +375,102 @@ export default function Home() {
               >
                 Request your move — quick, easy, concierge-level service.
               </p>
+
+              {/* Quote Method Toggle */}
+              <div className="flex items-center justify-center gap-3 mb-8">
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: useNewQuoteMethod ? 400 : 600,
+                    color: useNewQuoteMethod ? '#6B7280' : '#111111',
+                    fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Simple Quote
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseNewQuoteMethod(!useNewQuoteMethod)}
+                  className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{
+                    background: useNewQuoteMethod
+                      ? `linear-gradient(135deg, ${GOLD}, #FFD860)`
+                      : 'rgba(156, 163, 175, 0.3)',
+                    boxShadow: useNewQuoteMethod
+                      ? '0 4px 12px rgba(245,183,0,0.3)'
+                      : 'none',
+                  }}
+                >
+                  <span
+                    className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"
+                    style={{
+                      transform: useNewQuoteMethod ? 'translateX(34px)' : 'translateX(4px)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }}
+                  />
+                </button>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: useNewQuoteMethod ? 600 : 400,
+                    color: useNewQuoteMethod ? '#111111' : '#6B7280',
+                    fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Advanced Quote
+                </span>
+              </div>
             </div>
 
-            {/* Notices */}
-            <div className="px-6 sm:px-10">
-              {isLoading && (
-                <div
-                  className="mb-6 rounded-lg px-4 py-3 text-center"
-                  style={{
-                    background: 'rgba(59,130,246,0.10)',
-                    border: '1px solid rgba(59,130,246,0.35)',
-                    color: '#1D4ED8',
-                  }}
-                >
-                  Validating your link…
-                </div>
-              )}
+            {/* Simple Quote Form - Only show when NOT using Advanced Quote */}
+            {!useNewQuoteMethod && (
+              <>
+                {/* Notices */}
+                <div className="px-6 sm:px-10">
+                  {isLoading && (
+                    <div
+                      className="mb-6 rounded-lg px-4 py-3 text-center"
+                      style={{
+                        background: 'rgba(59,130,246,0.10)',
+                        border: '1px solid rgba(59,130,246,0.35)',
+                        color: '#1D4ED8',
+                      }}
+                    >
+                      Validating your link…
+                    </div>
+                  )}
 
-              {error && (
-                <div
-                  className="mb-6 rounded-lg px-4 py-3 text-center"
-                  style={{
-                    background: 'rgba(239,68,68,0.08)',
-                    border: '1px solid rgba(239,68,68,0.3)',
-                    color: '#B91C1C',
-                  }}
-                >
-                  {error}
-                </div>
-              )}
+                  {error && (
+                    <div
+                      className="mb-6 rounded-lg px-4 py-3 text-center"
+                      style={{
+                        background: 'rgba(239,68,68,0.08)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        color: '#B91C1C',
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
 
-              {submitMessage && !error && (
-                <div
-                  className="mb-6 rounded-lg px-4 py-3 text-center"
-                  style={{
-                    background: 'rgba(16,185,129,0.10)',
-                    border: '1px solid rgba(16,185,129,0.3)',
-                    color: '#047857',
-                  }}
-                >
-                  {submitMessage}
+                  {submitMessage && !error && (
+                    <div
+                      className="mb-6 rounded-lg px-4 py-3 text-center"
+                      style={{
+                        background: 'rgba(16,185,129,0.10)',
+                        border: '1px solid rgba(16,185,129,0.3)',
+                        color: '#047857',
+                      }}
+                    >
+                      {submitMessage}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="px-6 sm:px-10 pb-10 space-y-5">
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="px-6 sm:px-10 pb-10 space-y-5">
               <FormField
                 label="Name"
                 name="name"
@@ -420,6 +572,53 @@ export default function Home() {
                 </button>
               </div>
             </form>
+              </>
+            )}
+
+            {/* Chalk Leads Widget - Only show for Advanced Quote method */}
+            {useNewQuoteMethod && (
+              <div className="px-6 sm:px-10 pb-10">
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    background: 'rgba(245,183,0,0.08)',
+                    border: `1px solid ${GOLD}`,
+                    boxShadow: '0 4px 12px rgba(245,183,0,0.15)',
+                  }}
+                >
+                  <div
+                    className="px-4 py-3 text-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${GOLD}, #FFD860)`,
+                      borderBottom: `1px solid ${GOLD}`,
+                    }}
+                  >
+                    <h3
+                      className="font-bold text-sm"
+                      style={{
+                        color: '#111111',
+                        fontFamily: 'Poppins, Helvetica, Arial, sans-serif',
+                      }}
+                    >
+                      Get Your Quote
+                    </h3>
+                  </div>
+                  <iframe
+                    id="chalk-leads-widget"
+                    src={`https://chalk-leads-app-production.up.railway.app/widgets/b6kDrhI6P8J6t8XhoRLH2zNiuyl7sD3H/live?callback_url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/api/chalk-webhook' : '')}`}
+                    style={{
+                      width: '100%',
+                      minHeight: '600px',
+                      border: 'none',
+                      background: 'white',
+                    }}
+                    title="Chalk Leads Quote Widget"
+                    allowFullScreen
+                    allow="clipboard-write"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Bottom stripes */}
             <div

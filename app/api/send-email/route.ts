@@ -215,15 +215,15 @@ export async function POST(request: NextRequest) {
 
     // Send email to admin/business
     const adminEmail = await resend.emails.send({
-      from: 'delivered@resend.dev', // Change this to your verified domain
-      to: ['sebastiancastao379@gmail.com'], // Changed to specified admin email
+      from: 'service@furnituretaxi.site', // Change this to your verified domain
+      to: ['service@furnituretaxi.site'], // Changed to specified admin email
       subject: `New Moving Request from ${name}`,
       html: adminEmailHtml,
     })
 
     // Send confirmation email to customer
     const customerEmail = await resend.emails.send({
-      from: 'delivered@resend.dev', // Change this to your verified domain
+      from: 'service@furnituretaxi.site', // Change this to your verified domain
       to: [email],
       subject: 'Your Moving Request Confirmation - Furniture Taxi',
       html: customerEmailHtml,
