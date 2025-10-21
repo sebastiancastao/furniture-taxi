@@ -365,7 +365,7 @@ export default function Home() {
                 The Furniture Taxi
               </h1>
               <p
-                className="mb-6"
+                className="mb-8"
                 style={{
                   fontFamily: 'Inter, Helvetica, Arial, sans-serif',
                   color: '#374151',
@@ -376,52 +376,54 @@ export default function Home() {
                 Request your move — quick, easy, concierge-level service.
               </p>
 
-              {/* Quote Method Toggle */}
-              <div className="flex items-center justify-center gap-3 mb-8">
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: useNewQuoteMethod ? 400 : 600,
-                    color: useNewQuoteMethod ? '#6B7280' : '#111111',
-                    fontFamily: 'Inter, Helvetica, Arial, sans-serif',
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Simple Quote
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setUseNewQuoteMethod(!useNewQuoteMethod)}
-                  className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
-                  style={{
-                    background: useNewQuoteMethod
-                      ? `linear-gradient(135deg, ${GOLD}, #FFD860)`
-                      : 'rgba(156, 163, 175, 0.3)',
-                    boxShadow: useNewQuoteMethod
-                      ? '0 4px 12px rgba(245,183,0,0.3)'
-                      : 'none',
-                  }}
-                >
+              {/* Quote Method Toggle - HIDDEN */}
+              {false && (
+                <div className="flex items-center justify-center gap-3 mb-8">
                   <span
-                    className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"
                     style={{
-                      transform: useNewQuoteMethod ? 'translateX(34px)' : 'translateX(4px)',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      fontSize: 13,
+                      fontWeight: useNewQuoteMethod ? 400 : 600,
+                      color: useNewQuoteMethod ? '#6B7280' : '#111111',
+                      fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                      transition: 'all 0.3s ease',
                     }}
-                  />
-                </button>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: useNewQuoteMethod ? 600 : 400,
-                    color: useNewQuoteMethod ? '#111111' : '#6B7280',
-                    fontFamily: 'Inter, Helvetica, Arial, sans-serif',
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Advanced Quote
-                </span>
-              </div>
+                  >
+                    Simple Quote
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUseNewQuoteMethod(!useNewQuoteMethod)}
+                    className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    style={{
+                      background: useNewQuoteMethod
+                        ? `linear-gradient(135deg, ${GOLD}, #FFD860)`
+                        : 'rgba(156, 163, 175, 0.3)',
+                      boxShadow: useNewQuoteMethod
+                        ? '0 4px 12px rgba(245,183,0,0.3)'
+                        : 'none',
+                    }}
+                  >
+                    <span
+                      className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"
+                      style={{
+                        transform: useNewQuoteMethod ? 'translateX(34px)' : 'translateX(4px)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </button>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: useNewQuoteMethod ? 600 : 400,
+                      color: useNewQuoteMethod ? '#111111' : '#6B7280',
+                      fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    Advanced Quote
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Simple Quote Form - Only show when NOT using Advanced Quote */}
