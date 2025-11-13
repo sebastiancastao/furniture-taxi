@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { submitToGravityForms, convertToNumericFields } from '@/lib/gravityforms'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -7,6 +8,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { name, email, phone, fromZip, toZip, moveDate, moveSize, hasDiscount } = body
+
+    // Log incoming data for debugging
+    console.log('=== Send Email API - Received Data ===')
+    console.log('Body:', JSON.stringify(body, null, 2))
+    console.log('Extracted fields:', { name, email, phone, fromZip, toZip, moveDate, moveSize, hasDiscount })
 
     const discountAmount = hasDiscount ? 50 : 0
 
@@ -229,11 +235,57 @@ export async function POST(request: NextRequest) {
       html: customerEmailHtml,
     })
 
+    // Submit to Gravity Forms (form ID from environment or default to 3)
+    const gravityFormId = process.env.GRAVITY_FORMS_ID || '3'
+
+    // Format phone number to (XXX) XXX-XXXX format
+    const formatPhone = (phoneStr: string) => {
+      const digits = phoneStr.replace(/\D/g, '')
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+      }
+      return phoneStr // Return as-is if not 10 digits
+    }
+
+    // ========================================
+    // GRAVITY FORMS FIELD MAPPING (CORRECT FORMAT)
+    // Based on actual form structure
+    // ========================================
+    const gravityFormsFieldData = {
+      input_values: {
+        input_1_3: name,                // Name field (field 1, subfield 3)
+        input_3: email,                 // Email field
+        input_4: formatPhone(phone),    // Phone field (formatted)
+        input_5: moveDate,              // Move Date field
+        input_6: moveSize,              // Move Size field
+        input_8: fromZip,               // From Zip field
+        input_9: toZip,                 // To Zip field
+        // Note: No discount field in the form structure
+      }
+    }
+
+    console.log('=== Preparing Gravity Forms Submission ===')
+    console.log('Form ID:', gravityFormId)
+    console.log('Field Data to submit:', JSON.stringify(gravityFormsFieldData, null, 2))
+
+    const gravityFormsResult = await submitToGravityForms(gravityFormId, gravityFormsFieldData)
+
+    // Log Gravity Forms result but don't fail the whole request if it fails
+    console.log('=== Gravity Forms Submission Result ===')
+    console.log('Success:', gravityFormsResult.success)
+    if (!gravityFormsResult.success) {
+      console.error('Gravity Forms submission failed:', gravityFormsResult.error)
+    } else {
+      console.log('Gravity Forms submission succeeded:', gravityFormsResult.data)
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Emails sent successfully',
       adminEmailId: adminEmail.data?.id,
       customerEmailId: customerEmail.data?.id,
+      gravityFormsSubmitted: gravityFormsResult.success,
+      gravityFormsData: gravityFormsResult.data,
     })
   } catch (error) {
     console.error('Error sending email:', error)

@@ -28,6 +28,7 @@ export default function Home() {
   const [quote, setQuote] = useState<any>(null)
   const [isLoadingQuote, setIsLoadingQuote] = useState(false)
   const [useNewQuoteMethod, setUseNewQuoteMethod] = useState(false) // Toggle for new vs old method - default to Simple Quote
+  const [isCodeUsed, setIsCodeUsed] = useState(false)
 
   useEffect(() => {
     const code = searchParams.get('code')
@@ -125,11 +126,49 @@ export default function Home() {
     }
   }
 
+  const checkIfCodeUsed = async (code: string): Promise<boolean> => {
+    // Skip check if running on localhost (development mode)
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+    if (isLocalhost) {
+      console.log('Running on localhost - skipping code usage check')
+      return false
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('form_submissions')
+        .select('code')
+        .eq('code', code)
+        .limit(1)
+
+      if (error) {
+        console.error('Error checking code usage:', error)
+        return false
+      }
+
+      return data && data.length > 0
+    } catch (err) {
+      console.error('Error checking code usage:', err)
+      return false
+    }
+  }
+
   const fetchDataFromSupabase = async (code: string) => {
     setIsLoading(true)
     setError('')
 
     try {
+      // First, check if the code has already been used
+      const codeUsed = await checkIfCodeUsed(code)
+      if (codeUsed) {
+        setIsCodeUsed(true)
+        setError(`This link has already been used and cannot be used again.`)
+        setIsLoading(false)
+        return
+      }
+
       // Try 'discount'
       const { data: discountData, error: discountError } = await supabase
         .from('discount')
@@ -244,6 +283,18 @@ export default function Home() {
     setIsSubmitting(true)
     setSubmitMessage('')
     setError('')
+
+    // Double-check if code has been used (in case of race conditions)
+    const code = searchParams.get('code')
+    if (code) {
+      const codeUsed = await checkIfCodeUsed(code)
+      if (codeUsed) {
+        setIsCodeUsed(true)
+        setError('This link has already been used and cannot be used again.')
+        setIsSubmitting(false)
+        return
+      }
+    }
 
     try {
       const response = await fetch('/api/send-email', {
@@ -560,17 +611,17 @@ export default function Home() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full rounded-full font-semibold py-4 transition-all disabled:cursor-not-allowed"
+                  disabled={isSubmitting || isCodeUsed}
+                  className="w-full rounded-full font-semibold py-4 transition-all disabled:cursor-not-allowed disabled:opacity-60"
                   style={{
-                    background: isSubmitting
+                    background: (isSubmitting || isCodeUsed)
                       ? 'linear-gradient(135deg,#9CA3AF,#D1D5DB)'
                       : `linear-gradient(135deg, ${GOLD}, #FFD860)`,
                     color: '#111111',
                     boxShadow: '0 10px 28px rgba(245,183,0,0.30)',
                   }}
                 >
-                  {isSubmitting ? 'Submitting…' : 'Submit Moving Request'}
+                  {isSubmitting ? 'Submitting…' : isCodeUsed ? 'Link Already Used' : 'Submit Moving Request'}
                 </button>
               </div>
             </form>
