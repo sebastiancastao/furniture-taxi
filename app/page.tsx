@@ -6,6 +6,12 @@ import { supabase } from '@/lib/supabase'
 
 const GOLD = '#F5B700'
 const CREAM = '#FAF7EF'
+const BOOKING_WIDGET_URL =
+  'https://booking-tool2.onrender.com/widgets/gNhPnumEXJAm4fGkwNe5WlPzYBLe39gA/embed'
+const BOOKING_WIDGET_ORIGINS = [
+  'https://booking-tool2.onrender.com',
+  'https://chalk-leads-app-production.up.railway.app', // keep legacy origin for safety
+]
 
 export default function Home() {
   const searchParams = useSearchParams()
@@ -27,7 +33,7 @@ export default function Home() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [quote, setQuote] = useState<any>(null)
   const [isLoadingQuote, setIsLoadingQuote] = useState(false)
-  const [useNewQuoteMethod, setUseNewQuoteMethod] = useState(false) // Toggle for new vs old method - default to Simple Quote
+  const [showLongForm, setShowLongForm] = useState(false) // Toggle between quick form and longer booking widget
   const [isCodeUsed, setIsCodeUsed] = useState(false)
 
   useEffect(() => {
@@ -39,8 +45,8 @@ export default function Home() {
   // Listen for postMessage events from Chalk Leads widget
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      // Verify the message is from the Chalk Leads widget
-      if (event.origin !== 'https://chalk-leads-app-production.up.railway.app') {
+      // Verify the message is from the booking widget
+      if (!BOOKING_WIDGET_ORIGINS.includes(event.origin)) {
         return
       }
 
@@ -84,8 +90,8 @@ export default function Home() {
   useEffect(() => {
     const { fromZip, toZip, moveDate, moveSize } = formData
 
-    // Only fetch if new method is enabled and all required fields are filled
-    if (useNewQuoteMethod && fromZip && toZip && moveDate && moveSize) {
+    // Only fetch if the long widget view is enabled and all required fields are filled
+    if (showLongForm && fromZip && toZip && moveDate && moveSize) {
       const timeoutId = setTimeout(() => {
         fetchQuote()
       }, 500) // Debounce by 500ms
@@ -95,7 +101,7 @@ export default function Home() {
       setQuote(null) // Clear quote if fields are incomplete or old method is selected
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.fromZip, formData.toZip, formData.moveDate, formData.moveSize, useNewQuoteMethod])
+  }, [formData.fromZip, formData.toZip, formData.moveDate, formData.moveSize, showLongForm])
 
   const fetchQuote = async () => {
     setIsLoadingQuote(true)
@@ -348,11 +354,12 @@ export default function Home() {
   }
 
   return (
-    <main
-      className="min-h-screen py-10 px-4 sm:px-6 lg:px-8"
-      style={{ background: CREAM }}
-    >
-      {isSuccess ? (
+    <>
+      <main
+        className="min-h-screen py-10 px-4 sm:px-6 lg:px-8"
+        style={{ background: CREAM }}
+      >
+        {isSuccess ? (
         <div
           className="max-w-xl mx-auto rounded-2xl p-10 text-center shadow-2xl"
           style={{
@@ -427,58 +434,56 @@ export default function Home() {
                 Request your move — quick, easy, concierge-level service.
               </p>
 
-              {/* Quote Method Toggle - HIDDEN */}
-              {false && (
-                <div className="flex items-center justify-center gap-3 mb-8">
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: useNewQuoteMethod ? 400 : 600,
-                      color: useNewQuoteMethod ? '#6B7280' : '#111111',
-                      fontFamily: 'Inter, Helvetica, Arial, sans-serif',
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    Simple Quote
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setUseNewQuoteMethod(!useNewQuoteMethod)}
-                    className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
-                    style={{
-                      background: useNewQuoteMethod
-                        ? `linear-gradient(135deg, ${GOLD}, #FFD860)`
-                        : 'rgba(156, 163, 175, 0.3)',
-                      boxShadow: useNewQuoteMethod
-                        ? '0 4px 12px rgba(245,183,0,0.3)'
-                        : 'none',
-                    }}
-                  >
-                    <span
-                      className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"
-                      style={{
-                        transform: useNewQuoteMethod ? 'translateX(34px)' : 'translateX(4px)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      }}
-                    />
-                  </button>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: useNewQuoteMethod ? 600 : 400,
-                      color: useNewQuoteMethod ? '#111111' : '#6B7280',
-                      fontFamily: 'Inter, Helvetica, Arial, sans-serif',
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    Advanced Quote
-                  </span>
-                </div>
-              )}
-            </div>
+               {/* Toggle between quick form and longer booking widget */}
+               <div className="flex items-center justify-center gap-3 mb-8">
+                 <span
+                   style={{
+                     fontSize: 13,
+                     fontWeight: showLongForm ? 400 : 600,
+                     color: showLongForm ? '#6B7280' : '#111111',
+                     fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                     transition: 'all 0.3s ease',
+                   }}
+                 >
+                   Quick Form
+                 </span>
+                 <button
+                   type="button"
+                   onClick={() => setShowLongForm(!showLongForm)}
+                   className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+                   style={{
+                     background: showLongForm
+                       ? `linear-gradient(135deg, ${GOLD}, #FFD860)`
+                       : 'rgba(156, 163, 175, 0.3)',
+                     boxShadow: showLongForm
+                       ? '0 4px 12px rgba(245,183,0,0.3)'
+                       : 'none',
+                   }}
+                 >
+                   <span
+                     className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"
+                     style={{
+                       transform: showLongForm ? 'translateX(34px)' : 'translateX(4px)',
+                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                     }}
+                   />
+                 </button>
+                 <span
+                   style={{
+                     fontSize: 13,
+                     fontWeight: showLongForm ? 600 : 400,
+                     color: showLongForm ? '#111111' : '#6B7280',
+                     fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+                     transition: 'all 0.3s ease',
+                   }}
+                 >
+                   Long Booking Widget
+                 </span>
+               </div>
+             </div>
 
-            {/* Simple Quote Form - Only show when NOT using Advanced Quote */}
-            {!useNewQuoteMethod && (
+            {/* Simple Quote Form - Only show when NOT using the Long Booking Widget */}
+            {!showLongForm && (
               <>
                 {/* Notices */}
                 <div className="px-6 sm:px-10">
@@ -628,8 +633,8 @@ export default function Home() {
               </>
             )}
 
-            {/* Chalk Leads Widget - Only show for Advanced Quote method */}
-            {useNewQuoteMethod && (
+            {/* Long Booking Widget content */}
+            {showLongForm && (
               <div className="px-6 sm:px-10 pb-10">
                 <div
                   className="rounded-xl overflow-hidden"
@@ -653,22 +658,44 @@ export default function Home() {
                         fontFamily: 'Poppins, Helvetica, Arial, sans-serif',
                       }}
                     >
-                      Get Your Quote
+                      Long Booking Widget
                     </h3>
                   </div>
-                  <iframe
-                    id="chalk-leads-widget"
-                    src={`https://chalk-leads-app-production.up.railway.app/widgets/b6kDrhI6P8J6t8XhoRLH2zNiuyl7sD3H/live?callback_url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/api/chalk-webhook' : '')}`}
+                  <div
+                    className="bg-white"
                     style={{
-                      width: '100%',
-                      minHeight: '600px',
-                      border: 'none',
-                      background: 'white',
+                      minHeight: '800px',
                     }}
-                    title="Chalk Leads Quote Widget"
-                    allowFullScreen
-                    allow="clipboard-write"
-                  />
+                  >
+                    <iframe
+                      src={BOOKING_WIDGET_URL}
+                      style={{
+                        width: '100%',
+                        minHeight: '900px',
+                        border: 'none',
+                        background: 'white',
+                      }}
+                      title="Long Chalk booking widget"
+                      allowFullScreen
+                      allow="clipboard-write"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+
+                <div className="px-6 sm:px-10 mt-6">
+                  <div
+                    className="rounded-2xl border px-6 py-4 text-sm"
+                    style={{
+                      borderColor: 'rgba(17,17,17,0.08)',
+                      background: 'rgba(255,255,255,0.85)',
+                      boxShadow: '0 4px 20px rgba(17,17,17,0.05)',
+                    }}
+                  >
+                    <p className="text-neutral-700" style={{ lineHeight: 1.6 }}>
+                      This longer booking flow keeps everything in one place — fill it out when you need the full concierge experience.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -688,7 +715,8 @@ export default function Home() {
           </footer>
         </div>
       )}
-    </main>
+      </main>
+    </>
   )
 }
 
